@@ -1,4 +1,5 @@
 i want to make they are in one row, 50% line graph, 50% bargraph
+html_entity_decode
 <!-- linegraph here -->
 <hr style="margin:30px">
 
