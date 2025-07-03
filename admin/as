@@ -1,0 +1,187 @@
+i want to make they are in one row, 50% line graph, 50% bargraph
+html_entity_decode
+<!-- linegraph here -->
+<hr style="margin:30px">
+
+<?php
+
+$yearQuery = "SELECT DISTINCT YEAR(date_added) AS year FROM inventory_out ORDER BY year DESC";
+$yearResult = $conn->query($yearQuery);
+
+$availableYears = [];
+while ($row = $yearResult->fetch_assoc()) {
+    $availableYears[] = $row['year'];
+}
+
+$selectedYear = isset($_GET['year']) ? $_GET['year'] : date('Y');
+
+
+$result = $conn->query($sql);
+
+$allMonths = [];
+$monthlyData = [];
+
+for ($i = 1; $i <= 12; $i++) {
+    $monthKey = $selectedYear . '-' . str_pad($i, 2, '0', STR_PAD_LEFT);
+    $allMonths[] = $monthKey;
+    $monthlyData[$monthKey] = 0;
+}
+
+$sql = "SELECT DATE_FORMAT(date_added, '%Y-%m') AS month, SUM(used_quantity) AS total_quantity FROM inventory_out 
+                WHERE YEAR(date_added) = $selectedYear GROUP BY month ORDER BY month ASC";
+
+$result = $conn->query($sql);
+while ($row = $result->fetch_assoc()) {
+    $monthlyData[$row['month']] = $row['total_quantity'];
+}
+
+$months = [];
+foreach (array_keys($monthlyData) as $monthKey) {
+    $months[] = date("M Y", strtotime($monthKey . "-01"));
+}
+$quantities = array_values($monthlyData);
+
+?>
+
+<form method="GET" style="text-align: center; margin-bottom: 20px; margin-top: 20px;">
+    <label for="year">Select Year: </label>
+    <select name="year" id="year" onchange="this.form.submit()">
+        <?php foreach ($availableYears as $year): ?>
+            <option value="<?php echo $year; ?>" <?php if ($year == $selectedYear) echo 'selected'; ?>>
+                <?php echo $year; ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+</form>
+
+<div style="padding: 20px; width: 50%;">
+    <canvas id="tonerUsageChart" style="max-width: 1000px; height: 300px;"></canvas>
+</div>
+
+<script>
+    const ctx = document.getElementById('tonerUsageChart').getContext('2d');
+
+    const tonerChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: <?php echo json_encode($months); ?>,
+            datasets: [{
+                label: 'Monthly Toner Usage',
+                data: <?php echo json_encode($quantities); ?>,
+                borderColor: 'rgb(128, 0, 0)',
+                backgroundColor: 'rgba(240, 127, 127, 0.38)',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Toner Usage Per Month',
+                    font: {
+                        size: 20
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 50,
+                    title: {
+                        display: true,
+                        text: 'Quantity Used'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Month'
+                    }
+                }
+            }
+        }
+    });
+</script>
+
+
+
+<!--bar graph -->
+
+<?php
+$barQuery = "SELECT department, SUM(used_quantity) AS total_used FROM inventory_out GROUP BY department ORDER BY department";
+
+$barResult = $conn->query($barQuery);
+
+$departments = [];
+$usedQuantities = [];
+
+while ($row = $barResult->fetch_assoc()) {
+    $departments[] = $row['department'];
+    $usedQuantities[] = $row['total_used'];
+}
+?>
+
+<div style="padding: 20px; width: 60%;">
+    <canvas id="departmentBarChart" style="max-width: 100%; height: 300px;"></canvas>
+</div>
+
+<script>
+    const barCtx = document.getElementById('departmentBarChart').getContext('2d');
+
+    const departmentBarChart = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+            labels: <?php echo json_encode($departments); ?>,
+            datasets: [{
+                label: 'Total Used',
+                data: <?php echo json_encode($usedQuantities); ?>,
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Used Toners per Department',
+                    font: {
+                        size: 18
+                    }
+                },
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Used Quantity'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Department'
+                    }
+                }
+            }
+        }
+    });
+</script>
+
+
+<div style="padding: 20px; width: 50%; box-sizing: border-box;">
+    <canvas id="tonerUsageChart" style="width: 100%; height: 300px;"></canvas>
+</div>
+
+<div style="padding: 20px; width: 50%; box-sizing: border-box;">
+    <canvas id="departmentBarChart" style="width: 100%; height: 300px;"></canvas>
+</div>
